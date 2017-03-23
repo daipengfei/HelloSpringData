@@ -1,6 +1,5 @@
 package com.april.fourth.bean;
 
-import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Component;
 
 /**
