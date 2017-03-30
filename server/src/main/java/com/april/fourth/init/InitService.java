@@ -4,6 +4,7 @@ import com.april.fourth.bean.BeanTwo;
 import com.april.fourth.dto.PersonDTO;
 import com.april.fourth.entity.Order;
 import com.april.fourth.service.HelloPerson;
+import org.easyrules.api.RulesEngine;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -23,8 +24,11 @@ import java.util.List;
 
 @Component
 public class InitService implements ApplicationRunner {
-    @Resource
+//    @Resource
     private MongoTemplate mongoTemplate;
+
+    @Resource
+    private RulesEngine rulesEngine;
 
     @Resource
     private BeanTwo beanTwo;
@@ -34,6 +38,11 @@ public class InitService implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) throws Exception {
+        rulesEngine.fireRules();
+//        mongoOps();
+    }
+
+    private void mongoOps() {
         PersonDTO personDTO = helloPerson.helloPerson();
         System.out.println(personDTO.getName());
         List<Order> orders = mongoTemplate.find(

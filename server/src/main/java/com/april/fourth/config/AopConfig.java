@@ -10,11 +10,11 @@ import org.springframework.instrument.classloading.LoadTimeWeaver;
  * Created by daipengfei
  * on 2017/3/23.
  */
-@EnableLoadTimeWeaving
-@Configuration
+//@EnableLoadTimeWeaving
+//@Configuration
 public class AopConfig {
 
-    @Bean
+//    @Bean
     public LoadTimeWeaver loadTimeWeaver() {
         System.out.println("hi");
         return new InstrumentationLoadTimeWeaver();

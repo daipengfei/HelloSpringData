@@ -37,6 +37,16 @@
             <artifactId>spring-boot-starter-aop</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>org.easyrules</groupId>
+            <artifactId>easyrules-quartz</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.easyrules</groupId>
+            <artifactId>easyrules-spring</artifactId>
+        </dependency>
+
     </dependencies>
 
 </project>
