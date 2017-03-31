@@ -1,16 +1,13 @@
 package com.april.fourth.rule;
 
-import org.easyrules.annotation.Action;
-import org.easyrules.annotation.Condition;
-import org.easyrules.annotation.Rule;
+import com.april.fourth.dto.RuleContext;
+import org.easyrules.api.Rule;
 import org.easyrules.api.RulesEngine;
-import org.easyrules.core.BasicRule;
 import org.easyrules.core.RulesEngineBuilder;
-import org.easyrules.quartz.RulesEngineScheduler;
 import org.easyrules.quartz.RulesEngineSchedulerException;
-import org.springframework.stereotype.Component;
 
-import java.util.Date;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 
 /**
@@ -18,27 +15,56 @@ import java.util.Date;
  * on 2017/3/30.
  */
 
-@Component
-public class MyThirdRule extends BasicRule{
+public class MyThirdRule extends AbstractRule {
+
 
     @Override
     public boolean evaluate() {
-       return true;
+        return getRuleContext().isPassed() && getRuleContext().getNum() > 30;
     }
 
     @Override
     public void execute() throws Exception {
-        System.out.println("third rule!!!");
+        System.out.println("third rule executed! ruleContext = " + getRuleContext());
     }
 
-    public static void main(String[] args) throws RulesEngineSchedulerException {
-        RulesEngine rulesEngine = RulesEngineBuilder.aNewRulesEngine()
-                .withSilentMode(true)
-                .build();
-        MyThirdRule myFirstRule = new MyThirdRule();
-        rulesEngine.registerRule(myFirstRule);
-        RulesEngineScheduler scheduler = RulesEngineScheduler.getInstance();
-        scheduler.scheduleAtWithInterval(rulesEngine,new Date(),1);
-        scheduler.start();
+    static RulesEngine rulesEngine = RulesEngineBuilder.aNewRulesEngine()
+            .withSilentMode(true).build();
+
+    static {
+        rulesEngine.registerRule(new MyFirstRule());
+        rulesEngine.registerRule(new MySecondRule());
+        rulesEngine.registerRule(new MyThirdRule());
     }
+
+
+    public static void main(String[] args) throws RulesEngineSchedulerException {
+
+        ExecutorService executorService = Executors.newFixedThreadPool(50);
+        for (int i = 0; i < 50; i++) {
+            executorService.execute(new RuleTask(i));
+        }
+
+    }
+
+    static class RuleTask implements Runnable {
+        private final int taskId;
+
+        public RuleTask(int taskId) {
+            this.taskId = taskId;
+        }
+
+        @Override
+        public void run() {
+            RuleContext ruleContext = new RuleContext();
+            ruleContext.setPassed(true);
+            ruleContext.setNum(taskId);
+            for (Rule rule : rulesEngine.getRules()) {
+                AbstractRule abstractRule = (AbstractRule) rule;
+                abstractRule.setRuleContext(ruleContext);
+            }
+            rulesEngine.fireRules();
+        }
+    }
+
 }

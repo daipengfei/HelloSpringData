@@ -1,5 +1,6 @@
 package com.april.fourth.rule;
 
+import com.april.fourth.dto.RuleContext;
 import org.easyrules.annotation.Action;
 import org.easyrules.annotation.Condition;
 import org.easyrules.annotation.Rule;
@@ -16,28 +17,19 @@ import java.util.Date;
  * Created by daipengfei
  * on 2017/3/30.
  */
-@Rule(name = "mySecondRule")
-@Component
-public class MySecondRule {
 
-    @Condition
-    public boolean when(){
-        return true;
+public class MySecondRule extends AbstractRule{
+
+
+    @Override
+    public boolean evaluate() {
+        return getRuleContext().isPassed() && getRuleContext().getNum() > 20
+                && getRuleContext().getNum() <= 30;
     }
 
-    @Action
-    public void then(){
-        System.out.println("good easy rule!");
+    @Override
+    public void execute() throws Exception {
+        System.out.println("second rule executed! ruleContext = " + getRuleContext());
     }
 
-    public static void main(String[] args) throws RulesEngineSchedulerException {
-        RulesEngine rulesEngine = RulesEngineBuilder.aNewRulesEngine()
-                .withSilentMode(true)
-                .build();
-        MySecondRule myFirstRule = new MySecondRule();
-        rulesEngine.registerRule(myFirstRule);
-        RulesEngineScheduler scheduler = RulesEngineScheduler.getInstance();
-        scheduler.scheduleAtWithInterval(rulesEngine,new Date(),1);
-        scheduler.start();
-    }
 }
