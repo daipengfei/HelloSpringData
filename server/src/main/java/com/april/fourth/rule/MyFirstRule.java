@@ -18,7 +18,7 @@ public class MyFirstRule extends AbstractRule{
 
     @Override
     public void execute() throws Exception {
-        System.out.println("first rule executed! ruleContext = " + getRuleContext());
+        getRuleContext().setFiltered(true);
     }
 
 }

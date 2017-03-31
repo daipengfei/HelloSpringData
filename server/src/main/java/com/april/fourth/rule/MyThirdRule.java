@@ -6,8 +6,9 @@ import org.easyrules.api.RulesEngine;
 import org.easyrules.core.RulesEngineBuilder;
 import org.easyrules.quartz.RulesEngineSchedulerException;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.*;
 
 
 /**
@@ -17,7 +18,6 @@ import java.util.concurrent.Executors;
 
 public class MyThirdRule extends AbstractRule {
 
-
     @Override
     public boolean evaluate() {
         return getRuleContext().isPassed() && getRuleContext().getNum() > 30;
@@ -25,7 +25,7 @@ public class MyThirdRule extends AbstractRule {
 
     @Override
     public void execute() throws Exception {
-        System.out.println("third rule executed! ruleContext = " + getRuleContext());
+        getRuleContext().setFiltered(true);
     }
 
     static RulesEngine rulesEngine = RulesEngineBuilder.aNewRulesEngine()
@@ -41,29 +41,42 @@ public class MyThirdRule extends AbstractRule {
     public static void main(String[] args) throws RulesEngineSchedulerException {
 
         ExecutorService executorService = Executors.newFixedThreadPool(50);
+        List<RuleContext> list = new ArrayList<>();
         for (int i = 0; i < 50; i++) {
-            executorService.execute(new RuleTask(i));
+            RuleContext ruleContext = new RuleContext();
+            ruleContext.setPassed(true);
+            ruleContext.setNum(i);
+            list.add(ruleContext);
         }
-
+        List<RuleContext> filtered = new ArrayList<>();
+        for (RuleContext ruleContext : list) {
+            Future<Boolean> future = executorService.submit(new RuleTask(ruleContext));
+            try {
+                if(!future.get()){
+                    filtered.add(ruleContext);
+                }
+            } catch (Exception e) {
+               ;
+            }
+        }
+        System.out.println(filtered);
     }
 
-    static class RuleTask implements Runnable {
-        private final int taskId;
+    static class RuleTask implements Callable<Boolean> {
+        private final RuleContext ruleContext;
 
-        public RuleTask(int taskId) {
-            this.taskId = taskId;
+        public RuleTask(RuleContext ruleContext) {
+            this.ruleContext = ruleContext;
         }
 
         @Override
-        public void run() {
-            RuleContext ruleContext = new RuleContext();
-            ruleContext.setPassed(true);
-            ruleContext.setNum(taskId);
+        public Boolean call() {
             for (Rule rule : rulesEngine.getRules()) {
                 AbstractRule abstractRule = (AbstractRule) rule;
                 abstractRule.setRuleContext(ruleContext);
             }
             rulesEngine.fireRules();
+            return ruleContext.isFiltered();
         }
     }
 

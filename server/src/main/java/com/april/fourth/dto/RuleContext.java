@@ -11,6 +11,8 @@ public class RuleContext {
 
     private boolean isPassed;
 
+    private boolean filtered;
+
     public String getName() {
         return name;
     }
@@ -35,12 +37,21 @@ public class RuleContext {
         isPassed = passed;
     }
 
+    public boolean isFiltered() {
+        return filtered;
+    }
+
+    public void setFiltered(boolean filtered) {
+        this.filtered = filtered;
+    }
+
     @Override
     public String toString() {
         return "RuleContext{" +
                 "name='" + name + '\'' +
                 ", num=" + num +
                 ", isPassed=" + isPassed +
+                ", filtered=" + filtered +
                 '}';
     }
 }

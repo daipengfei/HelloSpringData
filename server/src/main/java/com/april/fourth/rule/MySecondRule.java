@@ -29,7 +29,7 @@ public class MySecondRule extends AbstractRule{
 
     @Override
     public void execute() throws Exception {
-        System.out.println("second rule executed! ruleContext = " + getRuleContext());
+        getRuleContext().setFiltered(true);
     }
 
 }
