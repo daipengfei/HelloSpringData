@@ -45,7 +45,8 @@ public class InitService implements ApplicationRunner {
     public void run(ApplicationArguments args) throws Exception {
         Criteria criteria = new Criteria();
         CriteriaQuery query = new CriteriaQuery(criteria);
-        elasticsearchTemplate.queryForList(query,Object.class);
+        query.addIndices("bank");
+        elasticsearchTemplate.createIndex("test_index");
 //        rulesEngine.fireRules();
 //        mongoOps();
     }
