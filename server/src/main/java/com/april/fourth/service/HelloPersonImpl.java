@@ -17,4 +17,9 @@ public class HelloPersonImpl implements HelloPerson {
         return null;
     }
 
+    public int get(int key){
+        return key;
+    }
+
+
 }

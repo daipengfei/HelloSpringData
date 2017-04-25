@@ -10,4 +10,5 @@ public interface HelloPerson {
 
     PersonDTO helloPerson();
 
+    public int get(int key);
 }
