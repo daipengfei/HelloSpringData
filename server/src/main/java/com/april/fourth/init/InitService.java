@@ -70,12 +70,16 @@ public class InitService implements ApplicationRunner, InitializingBean {
 
     @Override
     public void run(ApplicationArguments args) throws Exception {
-        System.out.println(cache.getUnchecked(1));
+        System.out.println(beanTwo.getFromCache(1));
+        System.out.println(beanTwo.getFromCache(2));
+        System.out.println(beanTwo.getFromCache(3));
+        System.out.println(beanTwo.getFromCache(1));
+//        System.out.println(cache.getUnchecked(1));
 //        Thread.sleep(1000);
 //        System.out.println(cache.getUnchecked(1));
-        System.out.println(cache.getUnchecked(3));
-        System.out.println(cache.getUnchecked(5));
-        System.out.println(cache.getUnchecked(7));
+//        System.out.println(cache.getUnchecked(3));
+//        System.out.println(cache.getUnchecked(5));
+//        System.out.println(cache.getUnchecked(7));
 //        insertRiderPosition();
 //        riderPositionSearch();
 //        devEs();
