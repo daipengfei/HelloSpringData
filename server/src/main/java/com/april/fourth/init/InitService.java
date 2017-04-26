@@ -6,6 +6,7 @@ import com.april.fourth.entity.Order;
 import com.april.fourth.service.HelloPerson;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+import org.apache.lucene.spatial3d.geom.GeoDistance;
 import org.easyrules.api.RulesEngine;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.index.IndexResponse;
@@ -21,7 +22,14 @@ import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.search.DocValueFormat;
 import org.elasticsearch.search.SearchHit;
+import org.elasticsearch.search.sort.GeoDistanceSortBuilder;
+import org.elasticsearch.search.sort.SortBuilder;
+import org.elasticsearch.search.sort.SortBuilders;
+import org.elasticsearch.search.sort.SortOrder;
 import org.elasticsearch.transport.client.PreBuiltTransportClient;
+import org.joda.time.DateTime;
+import org.joda.time.format.DateTimeFormatter;
+import org.joda.time.format.ISODateTimeFormat;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
@@ -66,9 +74,11 @@ public class InitService implements ApplicationRunner, InitializingBean {
 
     private Cache<Integer, Integer> cache;
 
+    private static final DateTimeFormatter formatter = ISODateTimeFormat.dateTime();
+
     @Override
     public void run(ApplicationArguments args) throws Exception {
-//        riderPositionUpdate();
+        riderPositionUpdate();
 //        try {
 //            Integer integer = cache.get(1, new Callable<Integer>() {
 //                @Override
@@ -91,7 +101,7 @@ public class InitService implements ApplicationRunner, InitializingBean {
 //        System.out.println(cache.getUnchecked(5));
 //        System.out.println(cache.getUnchecked(7));
 //        insertRiderPosition();
-        riderPositionSearch();
+//        riderPositionSearch();
 //        devEs();
 //        localEs();
 //        List<DiscoveryNode> discoveryNodes = client.listedNodes();
@@ -102,20 +112,24 @@ public class InitService implements ApplicationRunner, InitializingBean {
 
     private void riderPositionSearch() {
         QueryBuilder qb = geoDistanceQuery("point")
-                .point(new GeoPoint(40.22, -71.44))
-                .distance(0.853, DistanceUnit.KILOMETERS);
-
+                .point(new GeoPoint(40.12, -71.34))
+                .distance(8.853, DistanceUnit.KILOMETERS);
         SearchRequestBuilder searchRequestBuilder = transportClient.prepareSearch("rider")
-                .setTypes("rider_position")
-                .setSize(100);
-        searchRequestBuilder.setQuery(qb);
-        searchRequestBuilder.setPostFilter(matchQuery("cityId",1));
-//        new DocValueFormat.DateTime();
-        searchRequestBuilder.setPostFilter(rangeQuery("lastUpdateTime").gte(new Date()));
+                .setTypes("rider_position");
+
+        searchRequestBuilder.setQuery(
+                boolQuery().filter(termQuery("cityId", 1))
+                        .filter(rangeQuery("lastUpdateTime").gte(formatter.print(new DateTime().plusHours(-2))))
+                        .filter(qb));
+//        searchRequestBuilder.setPostFilter(rangeQuery("lastUpdateTime").gte(new Date()));
+        searchRequestBuilder.addSort(SortBuilders.geoDistanceSort("point",40.12,-71.34)
+        .order(SortOrder.ASC).unit(DistanceUnit.METERS));
+        searchRequestBuilder.setSize(3);
         System.out.println(searchRequestBuilder.toString());
         SearchResponse searchResponse = searchRequestBuilder.get();
         System.out.println(searchResponse);
         SearchHit[] hits = searchResponse.getHits().getHits();
+        System.out.println(searchResponse.getHits().getHits().length);
         for (SearchHit hitFields : hits) {
             Map<String, Object> sourceAsMap = hitFields.sourceAsMap();
             System.out.println(sourceAsMap);
@@ -133,16 +147,17 @@ public class InitService implements ApplicationRunner, InitializingBean {
 //                        .filter(termQuery("cityId", 1))
 //                        .get();
 //        System.out.println(r);
-        SearchResponse searchResponse = transportClient.prepareSearch("rider")
+        final SearchRequestBuilder searchRequestBuilder = transportClient.prepareSearch("rider")
                 .setTypes("rider_position")
-                .setQuery(matchQuery("riderId", 5446655))
-                .setQuery(matchQuery("cityId",1))
-                .setSize(1).get();
+                .setQuery(boolQuery().filter(termQuery("riderId", 5446655))
+                .filter(termQuery("cityId", 1)))
+                .setSize(1);
+        SearchResponse searchResponse = searchRequestBuilder.get();
 
         System.out.println(searchResponse);
 
-        Map<String,GeoPoint> map = new HashMap<>();
-        map.put("point", new GeoPoint(40.22, -71.44));
+        Map<String, GeoPoint> map = new HashMap<>();
+        map.put("point", new GeoPoint(40.12, -71.33));
         UpdateResponse updateResponse = transportClient.prepareUpdate().setIndex("rider")
                 .setType("rider_position").setId(searchResponse.getHits().getHits()[0].getId())
                 .setDoc(map).get();
@@ -195,9 +210,9 @@ public class InitService implements ApplicationRunner, InitializingBean {
         map.put("cityId", 1);
         map.put("lastUpdateTime", new Date());
         map.put("riderId", 5446655);
-        map.put("point", new GeoPoint(40.12, -71.34));
+        map.put("point", new GeoPoint(40.12, -71.38));
         IndexResponse responseIndex =
-                transportClient.prepareIndex("rider_three", "rider_position")
+                transportClient.prepareIndex("rider", "rider_position")
                         .setSource(map).get();
         System.out.println(responseIndex.status());
     }
