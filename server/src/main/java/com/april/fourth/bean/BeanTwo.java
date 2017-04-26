@@ -30,7 +30,7 @@ public class BeanTwo {
     }
 
     @Cacheable(value = "weather", key = "#key")
-    public int getFromCache(int key) {
+    public Integer getFromCache(int key) {
         System.out.println("get!!!!!!!!!");
         return map.get(key);
     }

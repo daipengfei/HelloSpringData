@@ -4,14 +4,14 @@ import com.april.fourth.bean.BeanTwo;
 import com.april.fourth.dto.PersonDTO;
 import com.april.fourth.entity.Order;
 import com.april.fourth.service.HelloPerson;
+import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
 import org.easyrules.api.RulesEngine;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.action.update.UpdateResponse;
 import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.common.geo.GeoPoint;
 import org.elasticsearch.common.settings.Settings;
@@ -19,13 +19,12 @@ import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import org.elasticsearch.common.unit.DistanceUnit;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
+import org.elasticsearch.search.DocValueFormat;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.transport.client.PreBuiltTransportClient;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
-import org.springframework.cache.CacheManager;
-import org.springframework.context.annotation.Bean;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.geo.GeoJsonPoint;
 import org.springframework.data.mongodb.core.query.Query;
@@ -38,11 +37,10 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
-import static org.elasticsearch.index.query.QueryBuilders.geoDistanceQuery;
+import static org.elasticsearch.index.query.QueryBuilders.*;
 
 /**
  * Created by daipengfei
@@ -66,14 +64,26 @@ public class InitService implements ApplicationRunner, InitializingBean {
     @Resource
     private TransportClient transportClient;
 
-    private LoadingCache<Integer, Integer> cache;
+    private Cache<Integer, Integer> cache;
 
     @Override
     public void run(ApplicationArguments args) throws Exception {
-        System.out.println(beanTwo.getFromCache(1));
-        System.out.println(beanTwo.getFromCache(2));
-        System.out.println(beanTwo.getFromCache(3));
-        System.out.println(beanTwo.getFromCache(1));
+//        riderPositionUpdate();
+//        try {
+//            Integer integer = cache.get(1, new Callable<Integer>() {
+//                @Override
+//                public Integer call() throws Exception {
+//                    return null;
+//                }
+//            });
+//            System.out.println(integer);
+//        }catch (Exception e){
+//            System.out.println(e.getMessage());
+//        }
+//        System.out.println("null !!!  = " + beanTwo.getFromCache(10));
+//        System.out.println(beanTwo.getFromCache(2));
+//        System.out.println(beanTwo.getFromCache(3));
+//        System.out.println(beanTwo.getFromCache(1));
 //        System.out.println(cache.getUnchecked(1));
 //        Thread.sleep(1000);
 //        System.out.println(cache.getUnchecked(1));
@@ -81,7 +91,7 @@ public class InitService implements ApplicationRunner, InitializingBean {
 //        System.out.println(cache.getUnchecked(5));
 //        System.out.println(cache.getUnchecked(7));
 //        insertRiderPosition();
-//        riderPositionSearch();
+        riderPositionSearch();
 //        devEs();
 //        localEs();
 //        List<DiscoveryNode> discoveryNodes = client.listedNodes();
@@ -92,21 +102,58 @@ public class InitService implements ApplicationRunner, InitializingBean {
 
     private void riderPositionSearch() {
         QueryBuilder qb = geoDistanceQuery("point")
-                .point(new GeoPoint(40.12, -71.35))
+                .point(new GeoPoint(40.22, -71.44))
                 .distance(0.853, DistanceUnit.KILOMETERS);
 
         SearchRequestBuilder searchRequestBuilder = transportClient.prepareSearch("rider")
                 .setTypes("rider_position")
                 .setSize(100);
         searchRequestBuilder.setQuery(qb);
-
+        searchRequestBuilder.setPostFilter(matchQuery("cityId",1));
+//        new DocValueFormat.DateTime();
+        searchRequestBuilder.setPostFilter(rangeQuery("lastUpdateTime").gte(new Date()));
         System.out.println(searchRequestBuilder.toString());
         SearchResponse searchResponse = searchRequestBuilder.get();
+        System.out.println(searchResponse);
         SearchHit[] hits = searchResponse.getHits().getHits();
         for (SearchHit hitFields : hits) {
             Map<String, Object> sourceAsMap = hitFields.sourceAsMap();
             System.out.println(sourceAsMap);
         }
+    }
+
+    private void riderPositionUpdate() throws IOException {
+//        UpdateByQueryRequestBuilder requestBuilder =
+//                UpdateByQueryAction.INSTANCE.newRequestBuilder(transportClient);
+//        requestBuilder.source("rider").source().setTypes("rider_position");
+//        BulkIndexByScrollResponse r =
+//                requestBuilder
+//                        .script(new Script("ctx._source.point.lat = 40.32;ctx._source.point.lon = -71.54"))
+//                        .filter(termQuery("riderId", 5446655))
+//                        .filter(termQuery("cityId", 1))
+//                        .get();
+//        System.out.println(r);
+        SearchResponse searchResponse = transportClient.prepareSearch("rider")
+                .setTypes("rider_position")
+                .setQuery(matchQuery("riderId", 5446655))
+                .setQuery(matchQuery("cityId",1))
+                .setSize(1).get();
+
+        System.out.println(searchResponse);
+
+        Map<String,GeoPoint> map = new HashMap<>();
+        map.put("point", new GeoPoint(40.22, -71.44));
+        UpdateResponse updateResponse = transportClient.prepareUpdate().setIndex("rider")
+                .setType("rider_position").setId(searchResponse.getHits().getHits()[0].getId())
+                .setDoc(map).get();
+        System.out.println(updateResponse);
+
+//        BulkIndexByScrollResponse response = UpdateByQueryAction.INSTANCE.newRequestBuilder(transportClient)
+//                .filter(matchQuery("cityId", 1))
+//                .filter(matchQuery("riderId", 5446655))
+//                .source("rider").
+//                .get();
+
     }
 
     private void devEs() throws IOException {
@@ -192,12 +239,14 @@ public class InitService implements ApplicationRunner, InitializingBean {
         cache = CacheBuilder.newBuilder()
                 .expireAfterAccess(1, TimeUnit.SECONDS)
                 .maximumSize(3)
-                .build(new CacheLoader<Integer, Integer>() {
-                    @Override
-                    public Integer load(Integer key) {
-                        System.out.println(Thread.currentThread().getName());
-                        return helloPerson.get(key);
-                    }
-                });
+                .build();
+    }
+
+    public static void main(String[] args) throws IOException {
+        XContentBuilder xContentBuilder = jsonBuilder().startObject()
+                .field("lat").value(40.22)
+                .field("lon").value(-71.44)
+                .endObject();
+        System.out.println(xContentBuilder.string());
     }
 }
